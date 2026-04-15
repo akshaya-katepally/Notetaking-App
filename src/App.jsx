@@ -2,8 +2,20 @@ import { useState, useEffect } from "react";
 import Sidebar from "./components/sidebar";
 import NotesList from "./components/NotesList";
 import Editor from "./components/Editor";
+import Topbar from "./components/Topbar";
 
 export default function App() {
+  const [dark, setDark] = useState(true);
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    } else {
+      document.documentElement.classList.remove("dark");
+      document.documentElement.classList.add("light");
+    }
+  }, [dark]);
+
   const [notes, setNotes] = useState(() => {
     const saved = localStorage.getItem("notes");
     return saved ? JSON.parse(saved) : [];
@@ -48,6 +60,25 @@ export default function App() {
   );
 
   return (
+    // <div className="flex h-screen bg-bg text-text">
+    //   <Sidebar
+    //     createNote={createNote}
+    //     search={search}
+    //     setSearch={setSearch}
+    //   />
+
+    //   <NotesList
+    //     notes={filteredNotes}
+    //     selectedId={selectedId}
+    //     setSelectedId={setSelectedId}
+    //   />
+
+    //   <Editor
+    //     note={selectedNote}
+    //     updateNote={updateNote}
+    //     deleteNote={deleteNote}
+    //   />
+    // </div>
     <div className="flex h-screen bg-bg text-text">
       <Sidebar
         createNote={createNote}
@@ -55,17 +86,23 @@ export default function App() {
         setSearch={setSearch}
       />
 
-      <NotesList
-        notes={filteredNotes}
-        selectedId={selectedId}
-        setSelectedId={setSelectedId}
-      />
+      <div className="flex-1 flex flex-col">
+        <Topbar dark={dark} setDark={setDark} />
 
-      <Editor
-        note={selectedNote}
-        updateNote={updateNote}
-        deleteNote={deleteNote}
-      />
+        <div className="flex flex-1">
+          <NotesList
+            notes={filteredNotes}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+          />
+
+          <Editor
+            note={selectedNote}
+            updateNote={updateNote}
+            deleteNote={deleteNote}
+          />
+        </div>
+      </div>
     </div>
   );
 }

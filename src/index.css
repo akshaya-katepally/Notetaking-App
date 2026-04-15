@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 🌙 Dark Theme (default) */
+/* 🌙 Dark (default) */
 :root {
   --bg: #0b0f1a;
   --card: #111827;
@@ -10,7 +10,7 @@
   --text: #e5e7eb;
 }
 
-/* ☀️ Light Theme (optional later) */
+/* ☀️ Light mode */
 .light {
   --bg: #f9fafb;
   --card: #ffffff;
