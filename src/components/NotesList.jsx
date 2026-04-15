@@ -6,14 +6,23 @@ export default function NotesList({ notes, selectedId, setSelectedId }) {
       <h2 className="mb-4 text-lg">Recent Notes</h2>
 
       <div className="space-y-3">
-        {notes.map((note) => (
-          <NoteCard
-            key={note.id}
-            note={note}
-            isActive={selectedId === note.id}
-            onClick={() => setSelectedId(note.id)}
-          />
-        ))}
+        {notes.map((note, index) => {
+  // count untitled notes before this one
+  const untitledIndex =
+    notes
+      .slice(0, index + 1)
+      .filter((n) => !n.title).length;
+
+  return (
+    <NoteCard
+      key={note.id}
+      note={note}
+      untitledIndex={untitledIndex}
+      isActive={selectedId === note.id}
+      onClick={() => setSelectedId(note.id)}
+    />
+  );
+})}
       </div>
     </div>
   );

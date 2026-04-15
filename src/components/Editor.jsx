@@ -10,9 +10,10 @@ export default function Editor({ note, updateNote, deleteNote }) {
   return (
     <div className="flex-1 p-8 bg-bg">
       <input
-        value={note.title}
+        value={note.title || ""}
         onChange={(e) => updateNote("title", e.target.value)}
         className="text-4xl font-serif w-full mb-6 bg-transparent outline-none"
+        placeholder="Untitled"
       />
 
       <textarea

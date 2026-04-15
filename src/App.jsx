@@ -30,10 +30,14 @@ export default function App() {
 
   const selectedNote = notes.find((n) => n.id === selectedId);
 
+  const getUntitledCount = () => {
+    return notes.filter((n) => !n.title || n.title.startsWith("Untitled")).length + 1;
+  };
+
   const createNote = () => {
     const newNote = {
       id: Date.now(),
-      title: "Untitled",
+      title: "",
       content: "",
     };
     setNotes([newNote, ...notes]);
