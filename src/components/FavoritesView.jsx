@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Search, Grid2X2, List, ArrowLeft, FileText } from "lucide-react";
 import { useNotes } from "../context/NotesContext";
 import NoteCard from "./NoteCard";
+import TopBar from "./TopBar";
+import { extractPlainText } from "../utils/textUtils";
 
 const CATEGORY_COLORS = {
   STUDY: "bg-[#1E3A3A] text-white",
@@ -14,6 +16,7 @@ export default function FavoritesView({ onOpenNote, onBack }) {
   const { notes, favoriteNotes, trashNote, toggleFavorite } = useNotes();
   const [view, setView] = useState("grid");
   const [query, setQuery] = useState("");
+  const asText = (value = "") => extractPlainText(value || "");
 
   // Get only favorite notes
   const favoriteNotesList = notes.filter((n) => favoriteNotes.includes(n.id));
@@ -21,48 +24,51 @@ export default function FavoritesView({ onOpenNote, onBack }) {
   const filtered = favoriteNotesList.filter(
     (n) =>
       n.title.toLowerCase().includes(query.toLowerCase()) ||
-      n.content.toLowerCase().includes(query.toLowerCase())
+      asText(n.content).toLowerCase().includes(query.toLowerCase())
   );
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-8 pt-5 pb-0 shrink-0">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-[13px] font-medium text-[#5A5854] hover:text-[#1A1A1A] transition-colors"
-        >
-          <ArrowLeft size={14} />
-          Back to Library
-        </button>
+      <TopBar
+        left={
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-[13px] font-medium text-[#5A5854] hover:text-[#1A1A1A]"
+          >
+            <ArrowLeft size={14} />
+            Back to Library
+          </button>
+        }
 
-        <div className="flex-1 max-w-md mx-4">
+        center={
           <div className="flex items-center gap-2.5 bg-white/60 border border-[#D0CCC6] rounded-xl px-3.5 py-2.5">
-            <Search size={14} className="text-[#9A9690] shrink-0" />
+            <Search size={14} className="text-[#9A9690]" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search favorites..."
-              className="bg-transparent text-[13px] text-[#1A1A1A] placeholder-[#9A9690] outline-none w-full"
+              className="bg-transparent text-[13px] outline-none w-full"
             />
           </div>
-        </div>
+        }
 
-        <div className="flex items-center border border-[#D0CCC6] rounded-lg overflow-hidden bg-white/40">
-          {[
-            { id: "grid", Icon: Grid2X2 },
-            { id: "list", Icon: List },
-          ].map(({ id, Icon }) => (
-            <button
-              key={id}
-              onClick={() => setView(id)}
-              className={`p-2 transition-colors ${view === id ? "bg-white shadow-sm" : "hover:bg-[#E5E2DC]"}`}
-            >
-              <Icon size={14} className={view === id ? "text-[#1A1A1A]" : "text-[#8A8680]"} />
-            </button>
-          ))}
-        </div>
-      </div>
+        right={
+          <div className="flex items-center border border-[#D0CCC6] rounded-lg overflow-hidden bg-white/40">
+            {[{ id: "grid", Icon: Grid2X2 }, { id: "list", Icon: List }].map(({ id, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setView(id)}
+                className={`p-2 ${
+                  view === id ? "bg-white shadow-sm" : "hover:bg-[#E5E2DC]"
+                }`}
+              >
+                <Icon size={14} />
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* Header */}
       <div className="px-8 pt-4 pb-3 shrink-0">
@@ -113,7 +119,7 @@ export default function FavoritesView({ onOpenNote, onBack }) {
                   <FileText size={16} className="text-[#9A9690] shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-semibold text-[#1A1A1A] truncate">{note.title}</p>
-                    <p className="text-[11px] text-[#8A8680] truncate">{note.content}</p>
+                    <p className="text-[11px] text-[#8A8680] truncate">{asText(note.content)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[note.category] || "bg-gray-200 text-gray-600"}`}>

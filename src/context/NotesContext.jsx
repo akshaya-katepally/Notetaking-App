@@ -1,4 +1,11 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+
+const STORAGE_KEY = "memoire-app-data";
+
+const NOTE_IMAGE_DEFAULTS = {
+  "Monolith Design System": "/note-monolith.svg",
+  "Urban Habitats Report": "/note-urban.svg",
+};
 
 const SAMPLE_NOTES = [
   {
@@ -20,7 +27,7 @@ const SAMPLE_NOTES = [
     category: "WORK",
     tags: [],
     date: "2h ago",
-    image: "https://images.unsplash.com/photo-1558655146-d09347e92766?w=400&q=80",
+    image: "https://images.unsplash.com/photo-1611047606025-a74bfb5eeb30?q=80&w=2231&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     featured: false,
   },
   {
@@ -82,24 +89,117 @@ const SAMPLE_NOTES = [
 const NotesContext = createContext(null);
 
 export function NotesProvider({ children }) {
-  const [notes, setNotes] = useState(SAMPLE_NOTES);
-  const [trashedNotes, setTrashedNotes] = useState([]);
-  const [pinnedNotes, setPinnedNotes] = useState([]);
-  const [favoriteNotes, setFavoriteNotes] = useState([]);
+  // 🔹 Normalize old notes (fix bad date formats)
+  const normalizeNotes = (notesArray = []) => {
+    return notesArray.map((note) => {
+      let validDate = new Date(note.date);
+      const titleImage = NOTE_IMAGE_DEFAULTS[note.title] || null;
+      const usesLegacyRemoteImage =
+        typeof note.image === "string" && note.image.includes("images.unsplash.com");
+      const normalizedImage =
+        titleImage && (!note.image || usesLegacyRemoteImage)
+          ? titleImage
+          : (note.image ?? null);
+
+      // If invalid → replace with current time
+      if (isNaN(validDate.getTime())) {
+        validDate = new Date();
+      }
+
+      return {
+        ...note,
+        image: normalizedImage,
+        date: validDate.toISOString(),
+      };
+    });
+  };
+
+  // 🔹 Load from localStorage (once)
+  const loadInitialData = () => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+
+      if (!stored) {
+        return {
+          notes: normalizeNotes(SAMPLE_NOTES),
+          trashedNotes: [],
+          pinnedNotes: [],
+          favoriteNotes: [],
+        };
+      }
+
+      const parsed = JSON.parse(stored);
+
+      return {
+        notes: parsed.notes?.length
+          ? normalizeNotes(parsed.notes)
+          : normalizeNotes(SAMPLE_NOTES),
+
+        trashedNotes: normalizeNotes(parsed.trashedNotes || []),
+        pinnedNotes: parsed.pinnedNotes || [],
+        favoriteNotes: parsed.favoriteNotes || [],
+      };
+    } catch (err) {
+      console.error("Failed to load from localStorage:", err);
+
+      return {
+        notes: normalizeNotes(SAMPLE_NOTES),
+        trashedNotes: [],
+        pinnedNotes: [],
+        favoriteNotes: [],
+      };
+    }
+  };
+
+  const initialData = loadInitialData();
+
+  const [notes, setNotes] = useState(initialData.notes);
+  const [trashedNotes, setTrashedNotes] = useState(initialData.trashedNotes);
+  const [pinnedNotes, setPinnedNotes] = useState(initialData.pinnedNotes);
+  const [favoriteNotes, setFavoriteNotes] = useState(initialData.favoriteNotes);
+
+  // 🔹 Save to localStorage whenever anything changes
+  useEffect(() => {
+    const data = {
+      notes,
+      trashedNotes,
+      pinnedNotes,
+      favoriteNotes,
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (err) {
+      console.error("Failed to save to localStorage:", err);
+    }
+  }, [notes, trashedNotes, pinnedNotes, favoriteNotes]);
+
+  // ------------------ Actions ------------------
 
   const addNote = (note) => {
-    const newNote = { 
-      ...note, 
-      id: Date.now().toString(), 
-      date: new Date().toLocaleString(),
-      pinned: false 
+    const newNote = {
+      ...note,
+      id: Date.now().toString(),
+      date: new Date().toISOString(), // ✅ consistent
+      pinned: false,
     };
+
     setNotes((prev) => [newNote, ...prev]);
     return newNote;
   };
 
   const updateNote = (id, updates) => {
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              ...updates,
+              date: new Date().toISOString(), // ✅ update timestamp
+            }
+          : n
+      )
+    );
   };
 
   const togglePin = (id) => {
@@ -108,21 +208,27 @@ export function NotesProvider({ children }) {
         n.id === id ? { ...n, pinned: !n.pinned } : n
       )
     );
+
     setPinnedNotes((prev) =>
-      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
+      prev.includes(id)
+        ? prev.filter((pid) => pid !== id)
+        : [...prev, id]
     );
   };
 
   const toggleFavorite = (id) => {
     setFavoriteNotes((prev) =>
-      prev.includes(id) ? prev.filter((fid) => fid !== id) : [...prev, id]
+      prev.includes(id)
+        ? prev.filter((fid) => fid !== id)
+        : [...prev, id]
     );
   };
 
   const trashNote = (id) => {
     const note = notes.find((n) => n.id === id);
+
     if (note) {
-      setTrashedNotes((prev) => [...prev, note]);
+      setTrashedNotes((prev) => [note, ...prev]);
       setNotes((prev) => prev.filter((n) => n.id !== id));
       setPinnedNotes((prev) => prev.filter((pid) => pid !== id));
       setFavoriteNotes((prev) => prev.filter((fid) => fid !== id));
@@ -131,6 +237,7 @@ export function NotesProvider({ children }) {
 
   const restoreNote = (id) => {
     const note = trashedNotes.find((n) => n.id === id);
+
     if (note) {
       setNotes((prev) => [note, ...prev]);
       setTrashedNotes((prev) => prev.filter((n) => n.id !== id));
@@ -138,23 +245,32 @@ export function NotesProvider({ children }) {
   };
 
   const permanentlyDeleteNote = (id) => {
-    setTrashedNotes((prev) => prev.filter((n) => n.id !== id));
+    setTrashedNotes((prev) =>
+      prev.filter((n) => n.id !== id)
+    );
+  };
+
+  const emptyTrash = () => {
+    setTrashedNotes([]);
   };
 
   return (
-    <NotesContext.Provider value={{ 
-      notes, 
-      trashedNotes, 
-      pinnedNotes, 
-      favoriteNotes,
-      addNote, 
-      updateNote, 
-      togglePin, 
-      toggleFavorite,
-      trashNote, 
-      restoreNote,
-      permanentlyDeleteNote 
-    }}>
+    <NotesContext.Provider
+      value={{
+        notes,
+        trashedNotes,
+        pinnedNotes,
+        favoriteNotes,
+        addNote,
+        updateNote,
+        togglePin,
+        toggleFavorite,
+        trashNote,
+        restoreNote,
+        permanentlyDeleteNote,
+        emptyTrash,
+      }}
+    >
       {children}
     </NotesContext.Provider>
   );

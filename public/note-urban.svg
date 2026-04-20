@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Urban Habitats Report preview">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#85a66f"/>
+      <stop offset="100%" stop-color="#2f4d3a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <g opacity="0.18" fill="#f5f8f1">
+    <rect x="100" y="120" width="170" height="410" rx="8"/>
+    <rect x="295" y="180" width="180" height="350" rx="8"/>
+    <rect x="505" y="90" width="205" height="440" rx="8"/>
+    <rect x="740" y="150" width="175" height="380" rx="8"/>
+    <rect x="940" y="210" width="150" height="320" rx="8"/>
+  </g>
+  <g fill="#f2f6ed">
+    <text x="90" y="520" font-size="72" font-family="Segoe UI, Arial, sans-serif" font-weight="700">Urban Habitats Report</text>
+    <text x="90" y="578" font-size="31" font-family="Segoe UI, Arial, sans-serif" opacity="0.92">Vertical greenery and local microclimate impact</text>
+  </g>
+</svg>

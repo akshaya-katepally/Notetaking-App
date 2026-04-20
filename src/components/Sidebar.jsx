@@ -17,7 +17,7 @@ export default function Sidebar({ onNewNote, onNavigate, currentView }) {
             <div className="w-3 h-3 border-2 border-[#A8C5BB] rounded-sm" />
           </div>
           <div>
-            <p className="text-[13px] font-bold text-[#1A1A1A] tracking-tight leading-none">la mémoire</p>
+            <p className="text-[13px] font-bold text-[#1A1A1A] tracking-tight leading-none">La mémoire</p>
             <p className="text-[9px] text-[#8A8680] tracking-[0.08em] uppercase mt-0.5">Personal Workspace</p>
           </div>
         </div>

@@ -1,5 +1,11 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trash2, MoreVertical, Pin, Copy, Share2, Heart } from "lucide-react";
+import { extractPlainText } from "../utils/textUtils";
+
+const NOTE_IMAGE_FALLBACKS = {
+  "Monolith Design System": "/note-monolith.svg",
+  "Urban Habitats Report": "/note-urban.svg",
+};
 
 const CATEGORY_COLORS = {
   STUDY: "bg-[#1E3A3A] text-white",
@@ -8,30 +14,55 @@ const CATEGORY_COLORS = {
   RESEARCH: "bg-[#1A2010] text-[#C8D4B0]",
 };
 
-export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onFavorite, isFavorite }) {
+export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onFavorite, isFavorite, hideActions = false }) {
   const { title, content, category, tags, date, image, pages, size, emoji, avatar, featured } = note;
   const [showMenu, setShowMenu] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const previewContent = extractPlainText(content || "");
+
+  const imageFromContent = useMemo(() => {
+    if (!content) return null;
+    const match = content.match(/<img[^>]+src=["']([^"']+)["']/i);
+    return match?.[1] || null;
+  }, [content]);
+
+  const previewImage = image || imageFromContent;
+  const fallbackImage = NOTE_IMAGE_FALLBACKS[title] || null;
+  const [imageSrc, setImageSrc] = useState(previewImage || fallbackImage || null);
+
+  useEffect(() => {
+    setImageFailed(false);
+    setImageSrc(previewImage || fallbackImage || null);
+  }, [previewImage, fallbackImage]);
+
+  const handleImageError = () => {
+    if (fallbackImage && imageSrc !== fallbackImage) {
+      setImageSrc(fallbackImage);
+      return;
+    }
+    setImageFailed(true);
+  };
 
   // Format date and time
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "Recently created";
     if (dateStr === "Just now") return "Just now";
-    
+
     try {
       const dateObj = new Date(dateStr);
       if (isNaN(dateObj.getTime())) {
         return dateStr; // Return original if parsing fails
       }
-      
+
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       const isToday = dateObj.toDateString() === today.toDateString();
       const isYesterday = dateObj.toDateString() === yesterday.toDateString();
-      
+
       const time = dateObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
-      
+
       if (isToday) {
         return `Today at ${time}`;
       } else if (isYesterday) {
@@ -47,22 +78,35 @@ export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onF
 
   return (
     <div className="break-inside-avoid w-full text-left bg-white/50 border border-[#D9D6CF] rounded-2xl overflow-visible hover:bg-white/80 hover:border-[#C8C3BA] hover:shadow-sm transition-all duration-150 group mb-4 relative">
-      {/* Three-dot menu button */}
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 z-20 transition-opacity">
-        <div className="relative">
+      {/* Top right actions */}
+      {!hideActions && (
+      <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
+
+        {/* ❤️ Always visible if favorite */}
+        {isFavorite && (
+          <Heart
+            size={14}
+            className="text-[#E91E63] fill-current"
+          />
+        )}
+
+        {/* ⋮ Only on hover */}
+        <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="p-1.5 rounded-full bg-white/80 hover:bg-white transition-colors shadow-sm hover:shadow-md"
+            className="p-1.5 rounded-full bg-white/80 hover:bg-white shadow-sm"
           >
-            <MoreVertical size={14} className="text-[#5A5854]" />
+            <MoreVertical size={14} />
           </button>
-          
+
+
           {/* Dropdown menu */}
           {showMenu && (
             <div className="absolute right-0 mt-1 w-48 bg-white border border-[#D0CCC6] rounded-lg shadow-lg z-50 animate-slide-in-up max-h-64 overflow-y-auto">
+
               {onPin && (
                 <button
                   onClick={(e) => {
@@ -70,10 +114,10 @@ export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onF
                     onPin(note.id);
                     setShowMenu(false);
                   }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] transition-colors flex items-center gap-2 text-[13px] text-[#2A2A2A] border-b border-[#E8E5DF]"
+                  className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-2 text-[13px]"
                 >
-                  <Pin size={14} className={isPinned ? "text-[#1E3A3A] fill-current" : "text-[#9A9690]"} />
-                  <span>{isPinned ? "Unpin note" : "Pin note"}</span>
+                  <Pin size={14} className={isPinned ? "text-[#1E3A3A] fill-current" : ""} />
+                  {isPinned ? "Unpin note" : "Pin note"}
                 </button>
               )}
 
@@ -84,37 +128,13 @@ export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onF
                     onFavorite(note.id);
                     setShowMenu(false);
                   }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] transition-colors flex items-center gap-2 text-[13px] text-[#2A2A2A] border-b border-[#E8E5DF]"
+                  className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-2 text-[13px]"
                 >
-                  <Heart size={14} className={isFavorite ? "text-[#E91E63] fill-current" : "text-[#9A9690]"} />
-                  <span>{isFavorite ? "Remove from favorites" : "Add to favorites"}</span>
+                  <Heart size={14} className={isFavorite ? "text-[#E91E63] fill-current" : ""} />
+                  {isFavorite ? "Remove from favorites" : "Add to favorites"}
                 </button>
               )}
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(`${title}\n\n${content}`);
-                  setShowMenu(false);
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] transition-colors flex items-center gap-2 text-[13px] text-[#2A2A2A] border-b border-[#E8E5DF]"
-              >
-                <Copy size={14} className="text-[#9A9690]" />
-                <span>Copy note</span>
-              </button>
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                  // Share functionality can be implemented here
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] transition-colors flex items-center gap-2 text-[13px] text-[#2A2A2A] border-b border-[#E8E5DF]"
-              >
-                <Share2 size={14} className="text-[#9A9690]" />
-                <span>Share</span>
-              </button>
-              
+
               {onDelete && (
                 <button
                   onClick={(e) => {
@@ -122,24 +142,31 @@ export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onF
                     onDelete(note.id);
                     setShowMenu(false);
                   }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-[#FFEBEE] transition-colors flex items-center gap-2 text-[13px] text-[#C62828]"
+                  className="w-full text-left px-4 py-2.5 hover:bg-[#FFEBEE] text-red-600 flex items-center gap-2 text-[13px]"
                 >
                   <Trash2 size={14} />
-                  <span>Delete</span>
+                  Delete
                 </button>
               )}
+
             </div>
           )}
         </div>
       </div>
+      )}
 
       <button
         onClick={onClick}
         className="w-full text-left block"
       >
-        {image && (
+        {imageSrc && !imageFailed && (
           <div className="w-full aspect-video overflow-hidden">
-            <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
+            <img
+              src={imageSrc}
+              alt={title || "Note preview"}
+              onError={handleImageError}
+              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            />
           </div>
         )}
 
@@ -160,7 +187,7 @@ export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onF
             </div>
           )}
 
-          {/* Category & Date */}
+          {/* Category */}
           {(category || date) && (
             <div className="flex items-center justify-between mb-2.5">
               {category && (
@@ -168,7 +195,6 @@ export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onF
                   {category}
                 </span>
               )}
-              {date && <span className="text-[10px] text-[#9A9690] ml-auto">{formatDateTime(date)}</span>}
             </div>
           )}
 
@@ -178,21 +204,10 @@ export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onF
           </h3>
 
           {/* Content preview */}
-          {content && (
+          {previewContent && (
             <p className={`text-[#6A6864] leading-relaxed ${featured ? "text-[13px]" : "text-[12px]"} ${emoji ? "text-center text-[11px]" : ""} line-clamp-3`}>
-              {content}
+              {previewContent}
             </p>
-          )}
-
-          {/* Tags */}
-          {tags && tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {tags.map((tag) => (
-                <span key={tag} className="text-[10px] text-[#6A6864] bg-[#E8E5DF] px-2 py-0.5 rounded-md">
-                  {tag}
-                </span>
-              ))}
-            </div>
           )}
 
           {/* File meta */}
@@ -203,14 +218,31 @@ export default function NoteCard({ note, onClick, onDelete, onPin, isPinned, onF
             </div>
           )}
 
-          {/* Avatar */}
-          {avatar && (
-            <div className="flex justify-end mt-3">
-              <div className="w-6 h-6 rounded-full bg-[#4A3728] flex items-center justify-center text-white text-[9px] font-bold">
-                {avatar}
-              </div>
+          {/* Bottom meta row */}
+          <div className="flex items-center justify-between mt-3 pt-2 ">
+
+            {/* Tags (left, limited width) */}
+            <div className="flex flex-wrap gap-1.5 max-w-[60%]">
+              {tags && tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] text-[#6A6864] bg-[#E8E5DF] px-2 py-0.5 rounded-md truncate"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
-          )}
+
+            {/* Date (right) */}
+            {date && (
+              <span className="text-[11px] text-[#9A9690] whitespace-nowrap ml-2">
+                {formatDateTime(date)}
+              </span>
+            )}
+
+          </div>
+
+
 
           {/* Open note button for emoji cards */}
           {emoji && (

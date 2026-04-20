@@ -211,3 +211,33 @@
     pointer-events: none;
   }
 }
+
+.word-editor .ProseMirror {
+  min-height: 540px;
+  line-height: 1.65;
+  color: #1f1f1f;
+  cursor: text;
+}
+
+.word-editor .ProseMirror p {
+  margin: 0.25rem 0 0.9rem;
+}
+
+.word-editor .ProseMirror h1,
+.word-editor .ProseMirror h2 {
+  margin: 1rem 0 0.6rem;
+  font-family: Calibri, "Segoe UI", sans-serif;
+}
+
+.word-editor .ProseMirror ul,
+.word-editor .ProseMirror ol {
+  padding-left: 1.5rem;
+}
+
+.word-editor .ProseMirror img,
+.word-editor .ProseMirror iframe,
+.word-editor .ProseMirror video {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 0.8rem 0;
+}
