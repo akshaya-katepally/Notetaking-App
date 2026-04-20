@@ -182,3 +182,32 @@
     border-right-color: var(--border);
   }
 }
+
+/* Editor Styling */
+.ProseMirror {
+  padding: 0;
+  color: #1A1A1A;
+}
+
+.ProseMirror:focus {
+  outline: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #9A9690;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Placeholder for empty editor */
+.tiptap {
+  &.is-editor-empty div.is-empty::before {
+    color: #9A9690;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}

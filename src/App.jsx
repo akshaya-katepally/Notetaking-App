@@ -1,113 +1,57 @@
-import { useState, useEffect } from "react";
-import Sidebar from "./components/sidebar";
-import NotesList from "./components/NotesList";
-import Editor from "./components/Editor";
-import Topbar from "./components/Topbar";
+import { useState } from "react";
+import Sidebar from "./components/Sidebar";
+import LibraryView from "./components/LibraryView";
+import EditorView from "./components/EditorView";
+import TrashView from "./components/TrashView";
+import FavoritesView from "./components/FavoritesView";
+import { NotesProvider } from "./context/NotesContext";
 
 export default function App() {
-  const [dark, setDark] = useState(true);
-  useEffect(() => {
-    if (dark) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.documentElement.classList.add("light");
-    }
-  }, [dark]);
+  const [currentView, setCurrentView] = useState("library"); // "library" | "editor" | "favorites" | "trash" | "settings"
+  const [activeNote, setActiveNote] = useState(null);
 
-  const [notes, setNotes] = useState(() => {
-    const saved = localStorage.getItem("notes");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [selectedId, setSelectedId] = useState(null);
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    localStorage.setItem("notes", JSON.stringify(notes));
-  }, [notes]);
-
-  const selectedNote = notes.find((n) => n.id === selectedId);
-
-  const getUntitledCount = () => {
-    return notes.filter((n) => !n.title || n.title.startsWith("Untitled")).length + 1;
+  const openNote = (note) => {
+    setActiveNote(note);
+    setCurrentView("editor");
   };
 
-  const createNote = () => {
-    const newNote = {
-      id: Date.now(),
-      title: "",
-      content: "",
-    };
-    setNotes([newNote, ...notes]);
-    setSelectedId(newNote.id);
+  const newNote = () => {
+    setActiveNote(null);
+    setCurrentView("editor");
   };
 
-  const updateNote = (field, value) => {
-    setNotes(
-      notes.map((n) =>
-        n.id === selectedId ? { ...n, [field]: value } : n
-      )
-    );
+  const goToLibrary = () => {
+    setCurrentView("library");
+    setActiveNote(null);
   };
 
-  const deleteNote = (id) => {
-    setNotes(notes.filter((n) => n.id !== id));
-    setSelectedId(null);
+  const navigate = (view) => {
+    setCurrentView(view);
+    setActiveNote(null);
   };
-
-  const filteredNotes = notes.filter(
-    (n) =>
-      n.title.toLowerCase().includes(search.toLowerCase()) ||
-      n.content.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
-    // <div className="flex h-screen bg-bg text-text">
-    //   <Sidebar
-    //     createNote={createNote}
-    //     search={search}
-    //     setSearch={setSearch}
-    //   />
-
-    //   <NotesList
-    //     notes={filteredNotes}
-    //     selectedId={selectedId}
-    //     setSelectedId={setSelectedId}
-    //   />
-
-    //   <Editor
-    //     note={selectedNote}
-    //     updateNote={updateNote}
-    //     deleteNote={deleteNote}
-    //   />
-    // </div>
-    <div className="flex h-screen bg-bg text-text">
-      <Sidebar
-        createNote={createNote}
-        search={search}
-        setSearch={setSearch}
-      />
-
-      <div className="flex-1 flex flex-col">
-        <Topbar dark={dark} setDark={setDark} />
-
-        <div className="flex flex-1">
-          <NotesList
-            notes={filteredNotes}
-            selectedId={selectedId}
-            setSelectedId={setSelectedId}
-          />
-
-          <Editor
-            note={selectedNote}
-            updateNote={updateNote}
-            deleteNote={deleteNote}
-          />
-        </div>
+    <NotesProvider>
+      <div className="flex h-screen bg-[#F0EDE8] font-sans overflow-hidden">
+        <Sidebar onNewNote={newNote} onNavigate={navigate} currentView={currentView} />
+        <main className="flex-1 overflow-hidden">
+          {currentView === "library" ? (
+            <LibraryView onOpenNote={openNote} onNewNote={newNote} />
+          ) : currentView === "editor" ? (
+            <EditorView note={activeNote} onBack={goToLibrary} />
+          ) : currentView === "favorites" ? (
+            <FavoritesView onOpenNote={openNote} onBack={goToLibrary} />
+          ) : currentView === "trash" ? (
+            <TrashView onBack={goToLibrary} />
+          ) : currentView === "settings" ? (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-[#8A8680]">Settings view - Coming soon</p>
+            </div>
+          ) : (
+            <LibraryView onOpenNote={openNote} onNewNote={newNote} />
+          )}
+        </main>
       </div>
-    </div>
+    </NotesProvider>
   );
 }
-
