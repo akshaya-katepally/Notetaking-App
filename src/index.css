@@ -142,3 +142,31 @@ body {
   color: #1E3A3A;
   text-decoration: underline;
 }
+
+.ProseMirror {
+  outline: none !important;
+  border: none !important;
+}
+
+.ProseMirror:focus {
+  outline: none !important;
+}
+/* Editor list fixes */
+.word-editor ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+
+.word-editor ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+}
+
+.word-editor ul,
+.word-editor ol {
+  list-style-position: outside;
+}
+
+.word-editor li {
+  margin-bottom: 6px;
+}

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { Extension } from "@tiptap/core";
+import { Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
@@ -38,7 +39,6 @@ import {
 } from "lucide-react";
 import { useNotes } from "../context/NotesContext";
 import { extractPlainText, plainTextToHtml } from "../utils/textUtils";
-import TopBar from "./TopBar";
 
 const CATEGORIES = ["UNCATEGORIZED", "STUDY", "WORK", "PERSONAL", "RESEARCH"];
 const FONT_FAMILIES = [
@@ -123,6 +123,39 @@ const FontSize = Extension.create({
   },
 });
 
+const VideoExtension = Node.create({
+  name: "video",
+
+  group: "block",
+  selectable: true,
+  draggable: true,
+
+  addAttributes() {
+    return {
+      src: { default: null },
+      controls: { default: true },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: "video",
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "video",
+      { ...HTMLAttributes, controls: true, style: "max-width:100%; border-radius:8px;" },
+      ["source", { src: HTMLAttributes.src }],
+    ];
+  },
+});
+
+
+
 export default function EditorView({ note, onBack }) {
   const { addNote, updateNote } = useNotes();
   const [title, setTitle] = useState(note?.title || "");
@@ -140,15 +173,16 @@ export default function EditorView({ note, onBack }) {
   const noteIdRef = useRef(note?.id || null);
   const contentRef = useRef(toEditorHtml(note?.content || ""));
   const saveTimeoutRef = useRef(null);
-  const imageInputRef = useRef(null);
-  const videoInputRef = useRef(null);
+  const mediaInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const mediaStreamRef = useRef(null);
   const recordingChunksRef = useRef([]);
+  const recognitionRef = useRef(null);  
 
   const editor = useEditor({
     extensions: [
       StarterKit,
+      VideoExtension,
       Underline,
       TextStyle,
       FontSize,
@@ -277,7 +311,37 @@ export default function EditorView({ note, onBack }) {
   const onBrowseVideoClick = () => {
     videoInputRef.current?.click();
   };
+  
+  const handleMediaSelected = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
+    // ✅ IMAGE → use base64
+    if (file.type.startsWith("image/")) {
+      const dataUrl = await fileToDataUrl(file);
+
+      editor?.chain().focus().setImage({ src: dataUrl }).run();
+    }
+
+    // ✅ VIDEO → use object URL
+    else if (file.type.startsWith("video/")) {
+      const url = URL.createObjectURL(file);
+
+      editor
+        ?.chain()
+        .focus()
+        .insertContent(`
+          <video controls style="max-width:100%; border-radius:8px;">
+            <source src="${url}" type="${file.type}" />
+          </video>
+          <p></p>
+        `)
+        .run();
+    }
+
+    debouncedSave();
+    event.target.value = "";
+  };
   const onImageSelected = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -307,66 +371,122 @@ export default function EditorView({ note, onBack }) {
       event.target.value = "";
     }
   };
+  
+  // const stopVoiceRecording = useCallback(() => {
+  //   if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+  //     mediaRecorderRef.current.stop();
+  //   }
+  // }, []);
 
-  const stopVoiceRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-  }, []);
+  // const startVoiceRecording = useCallback(async () => {
+  //   if (!window.MediaRecorder) {
+  //     window.alert("Voice recording is not supported in this browser.");
+  //     return;
+  //   }
 
-  const startVoiceRecording = useCallback(async () => {
-    if (!window.MediaRecorder) {
-      window.alert("Voice recording is not supported in this browser.");
-      return;
-    }
+  //   try {
+  //     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  //     mediaStreamRef.current = stream;
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
+  //     const recorder = new MediaRecorder(stream);
+  //     mediaRecorderRef.current = recorder;
+  //     recordingChunksRef.current = [];
 
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      recordingChunksRef.current = [];
+  //     recorder.ondataavailable = (event) => {
+  //       if (event.data.size > 0) {
+  //         recordingChunksRef.current.push(event.data);
+  //       }
+  //     };
 
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordingChunksRef.current.push(event.data);
-        }
-      };
+  //     recorder.onstop = async () => {
+  //       const audioBlob = new Blob(recordingChunksRef.current, { type: "audio/webm" });
+  //       const dataUrl = await fileToDataUrl(audioBlob);
 
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(recordingChunksRef.current, { type: "audio/webm" });
-        const dataUrl = await fileToDataUrl(audioBlob);
+  //       editor
+  //         ?.chain()
+  //         .focus()
+  //         .insertContent(`<audio controls src="${dataUrl}"></audio><p></p>`)
+  //         .run();
 
-        editor
-          ?.chain()
-          .focus()
-          .insertContent(`<audio controls src="${dataUrl}"></audio><p></p>`)
-          .run();
+  //       debouncedSave();
+  //       setIsRecording(false);
 
-        debouncedSave();
-        setIsRecording(false);
+  //       if (mediaStreamRef.current) {
+  //         mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+  //         mediaStreamRef.current = null;
+  //       }
+  //     };
 
-        if (mediaStreamRef.current) {
-          mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-          mediaStreamRef.current = null;
-        }
-      };
+  //     recorder.start();
+  //     setIsRecording(true);
+  //   } catch {
+  //     window.alert("Microphone permission is required to record a voice note.");
+  //   }
+  // }, [debouncedSave, editor]);
 
-      recorder.start();
-      setIsRecording(true);
-    } catch {
-      window.alert("Microphone permission is required to record a voice note.");
-    }
-  }, [debouncedSave, editor]);
+  //const recognitionRef = useRef(null); // 👈 ADD near other refs
 
-  const toggleVoiceRecording = () => {
-    if (isRecording) {
-      stopVoiceRecording();
-    } else {
-      startVoiceRecording();
-    }
+//const recognitionRef = useRef(null);
+
+const startSpeechToText = () => {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert("Speech recognition not supported");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognitionRef.current = recognition;
+
+  recognition.continuous = true;
+  recognition.interimResults = false; // ✅ IMPORTANT
+  recognition.lang = "en-US";
+
+  recognition.onstart = () => {
+    console.log("🎤 Started");
+    setIsRecording(true);
   };
+
+  recognition.onend = () => {
+    console.log("🛑 Stopped");
+    setIsRecording(false);
+  };
+
+  recognition.onerror = (e) => {
+    console.error("Speech error:", e);
+    setIsRecording(false);
+  };
+
+  recognition.onresult = (event) => {
+    const text = event.results[event.results.length - 1][0].transcript;
+
+    console.log("Speech:", text);
+
+    if (!editor) return;
+
+    // ✅ FORCE insert at end (MOST IMPORTANT FIX)
+    editor.commands.insertContentAt(
+      editor.state.doc.content.size,
+      text + " "
+    );
+  };
+
+  recognition.start();
+};
+
+const stopSpeechToText = () => {
+  recognitionRef.current?.stop();
+};
+
+  // const toggleVoiceRecording = () => {
+  //   if (isRecording) {
+  //     stopVoiceRecording();
+  //   } else {
+  //     startVoiceRecording();
+  //   }
+  // };
 
   const insertShape = () => {
     const selected = window.prompt("Type: square, circle, triangle, or diamond");
@@ -471,16 +591,15 @@ export default function EditorView({ note, onBack }) {
   ];
 
   const TOOLBAR_RIGHT = [
-    { icon: ImagePlus, title: "Image (Browse)", action: onBrowseImageClick },
-    { icon: Video, title: "Video (Browse)", action: onBrowseVideoClick },
+    { icon: ImagePlus,title: "Media",action: () => mediaInputRef.current?.click(),},
     { icon: Video, title: "YouTube", action: insertVideo },
     { icon: Shapes, title: "Shape", action: insertShape },
     {
       icon: isRecording ? Square : Mic,
-      title: isRecording ? "Stop Voice Note" : "Record Voice Note",
-      action: toggleVoiceRecording,
+      title: isRecording ? "Stop Recording" : "Start Recording",
+      action: isRecording ? stopSpeechToText : startSpeechToText,
       active: isRecording,
-    },
+    }
   ];
 
   const addTag = () => {
@@ -499,58 +618,54 @@ export default function EditorView({ note, onBack }) {
 
   return (
     <div className={`h-full flex flex-col overflow-hidden transition-colors duration-300 ${isFocusMode ? "bg-gradient-to-br from-[#FFFBF7] to-[#F7F4EF]" : ""}`}>
-      <TopBar
-        left={
-          <button onClick={onBack} className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#1E3A3A] transition-colors flex items-center gap-2">
-            <span className="opacity-60">←</span>
-            <span>Memoire</span>
+      <div className="flex items-center justify-between px-8 py-4 border-b border-[#D9D6CF] shrink-0 bg-white/50 backdrop-blur-sm shadow-xs hover:shadow-sm transition-all">
+        <button onClick={onBack} className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#1E3A3A] transition-colors flex items-center gap-2">
+          <span className="opacity-60">←</span>
+          <span>Memoire</span>
+        </button>
+
+        <div className="flex items-center gap-2.5 bg-white/70 border border-[#D0CCC6] rounded-xl px-4 py-2 w-60 hover:border-[#C8C3BA] transition-all">
+          <Search size={13} className="text-[#9A9690]" strokeWidth={2} />
+          <input placeholder="Search archive..." className="bg-transparent text-[12px] text-[#1A1A1A] placeholder-[#C8C3BA] outline-none w-full" />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
+              saveStatus === "auto-saved"
+                ? "bg-[#E8F5E9] text-[#2E7D32]"
+                : saveStatus === "saving"
+                  ? "bg-[#FFF3E0] text-[#F57C00] animate-pulse"
+                  : "bg-[#FFEBEE] text-[#C62828]"
+            }`}
+          >
+            {saveStatus === "auto-saved" && <CheckCircle2 size={14} strokeWidth={2.5} />}
+            {saveStatus === "saving" && <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+            {saveStatus === "unsaved" && <AlertCircle size={14} strokeWidth={2.5} />}
+            <span className="text-[11px] font-medium whitespace-nowrap">
+              {saveStatus === "auto-saved" && `Saved ${getTimeDisplay()}`}
+              {saveStatus === "saving" && "Saving..."}
+              {saveStatus === "unsaved" && "Unsaved changes"}
+            </span>
+          </div>
+
+          <button
+            onClick={manualSave}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E3A3A] text-white hover:bg-[#2A4A4A] transition-colors"
+            title="Save (Ctrl/Cmd + S)"
+          >
+            <Save size={13} strokeWidth={2.5} />
+            <span className="text-[11px] font-semibold">Save</span>
           </button>
-        }
-        center={
-          <div className="flex items-center gap-2.5 bg-white/70 border border-[#D0CCC6] rounded-xl px-4 py-2 w-60 hover:border-[#C8C3BA] transition-all">
-            <Search size={13} className="text-[#9A9690]" strokeWidth={2} />
-            <input placeholder="Search archive..." className="bg-transparent text-[12px] text-[#1A1A1A] placeholder-[#C8C3BA] outline-none w-full" />
-          </div>
-        }
-        right={
-          <div className="flex items-center gap-3">
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
-                saveStatus === "auto-saved"
-                  ? "bg-[#E8F5E9] text-[#2E7D32]"
-                  : saveStatus === "saving"
-                    ? "bg-[#FFF3E0] text-[#F57C00] animate-pulse"
-                    : "bg-[#FFEBEE] text-[#C62828]"
-              }`}
-            >
-              {saveStatus === "auto-saved" && <CheckCircle2 size={14} strokeWidth={2.5} />}
-              {saveStatus === "saving" && <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
-              {saveStatus === "unsaved" && <AlertCircle size={14} strokeWidth={2.5} />}
-              <span className="text-[11px] font-medium whitespace-nowrap">
-                {saveStatus === "auto-saved" && `Saved ${getTimeDisplay()}`}
-                {saveStatus === "saving" && "Saving..."}
-                {saveStatus === "unsaved" && "Unsaved changes"}
-              </span>
-            </div>
 
-            <button
-              onClick={manualSave}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E3A3A] text-white hover:bg-[#2A4A4A] transition-colors"
-              title="Save (Ctrl/Cmd + S)"
-            >
-              <Save size={13} strokeWidth={2.5} />
-              <span className="text-[11px] font-semibold">Save</span>
-            </button>
-
-            <button className="p-1.5 rounded-lg hover:bg-[#E5E2DC] transition-colors">
-              <SlidersHorizontal size={16} className="text-[#5A5854]" />
-            </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4A3728] to-[#2D1F17] flex items-center justify-center text-white text-[11px] font-bold shadow-sm">
-              JT
-            </div>
+          <button className="p-1.5 rounded-lg hover:bg-[#E5E2DC] transition-colors">
+            <SlidersHorizontal size={16} className="text-[#5A5854]" />
+          </button>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4A3728] to-[#2D1F17] flex items-center justify-center text-white text-[11px] font-bold shadow-sm">
+            JT
           </div>
-        }
-      />
+        </div>
+      </div>
 
       <div className="flex items-center justify-between px-6 py-2.5 border-b border-[#D9D6CF] shrink-0 bg-gradient-to-r from-white/50 to-white/30 backdrop-blur-xs">
         <div className="flex items-center gap-2">
@@ -634,7 +749,7 @@ export default function EditorView({ note, onBack }) {
 
       <div className="flex-1 overflow-y-auto bg-gradient-to-b from-white/30 via-white/20 to-transparent">
         <div className="max-w-[920px] mx-auto px-8 py-12">
-          <div className="bg-white border border-[#CFC8BE] shadow-[0_12px_40px_rgba(26,26,26,0.08)] rounded-md px-12 py-10 min-h-[70vh]">
+          <div className="bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl px-12 py-10 min-h-[70vh] border border-white/40">
             <input
               value={title}
               onChange={(e) => {
@@ -710,10 +825,9 @@ export default function EditorView({ note, onBack }) {
 
             <div className="word-editor" onClick={() => editor?.chain().focus("end").run()} role="presentation">
               <EditorContent
-                editor={editor}
-                className="text-[#1A1A1A] text-[16px] leading-relaxed outline-none max-w-none transition-colors min-h-[540px]"
-                style={{ fontFamily: "Calibri, 'Segoe UI', sans-serif" }}
-              />
+  editor={editor}
+  className="ProseMirror text-[#1A1A1A] text-[16px] leading-relaxed max-w-none min-h-[540px]"
+/>
             </div>
           </div>
         </div>
@@ -733,21 +847,15 @@ export default function EditorView({ note, onBack }) {
         </button>
       </div>
 
+      
       <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={onImageSelected}
+      ref={mediaInputRef}
+      type="file"
+      accept="image/*,video/*"
+      className="hidden"
+      onChange={handleMediaSelected}
       />
-
-      <input
-        ref={videoInputRef}
-        type="file"
-        accept="video/*"
-        className="hidden"
-        onChange={onVideoSelected}
-      />
+      
     </div>
   );
 }
