@@ -1,7 +1,6 @@
 export default function TopBar({ left, center, right }) {
   return (
-    <div className="flex items-center justify-between px-8 pt-5 pb-0 shrink-0">
-      
+    <div className="relative z-40 flex items-center justify-between px-8 pt-5 pb-4 shrink-0 overflow-visible bg-[#F8F5F0] border-b border-[#E5DFD7] shadow-sm">
       {/* Left */}
       <div className="min-w-[120px] flex items-center">
         {left}
@@ -16,7 +15,6 @@ export default function TopBar({ left, center, right }) {
       <div className="flex items-center gap-2 min-w-[120px] justify-end">
         {right}
       </div>
-
     </div>
   );
 }

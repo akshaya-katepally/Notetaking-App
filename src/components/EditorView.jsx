@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { useNotes } from "../context/NotesContext";
 import { extractPlainText, plainTextToHtml } from "../utils/textUtils";
+import TopBar from "./TopBar";
 
 const CATEGORIES = ["UNCATEGORIZED", "STUDY", "WORK", "PERSONAL", "RESEARCH"];
 const FONT_FAMILIES = [
@@ -498,54 +499,58 @@ export default function EditorView({ note, onBack }) {
 
   return (
     <div className={`h-full flex flex-col overflow-hidden transition-colors duration-300 ${isFocusMode ? "bg-gradient-to-br from-[#FFFBF7] to-[#F7F4EF]" : ""}`}>
-      <div className="flex items-center justify-between px-8 py-4 border-b border-[#D9D6CF] shrink-0 bg-white/50 backdrop-blur-sm shadow-xs hover:shadow-sm transition-all">
-        <button onClick={onBack} className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#1E3A3A] transition-colors flex items-center gap-2">
-          <span className="opacity-60">←</span>
-          <span>Memoire</span>
-        </button>
-
-        <div className="flex items-center gap-2.5 bg-white/70 border border-[#D0CCC6] rounded-xl px-4 py-2 w-60 hover:border-[#C8C3BA] transition-all">
-          <Search size={13} className="text-[#9A9690]" strokeWidth={2} />
-          <input placeholder="Search archive..." className="bg-transparent text-[12px] text-[#1A1A1A] placeholder-[#C8C3BA] outline-none w-full" />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
-              saveStatus === "auto-saved"
-                ? "bg-[#E8F5E9] text-[#2E7D32]"
-                : saveStatus === "saving"
-                  ? "bg-[#FFF3E0] text-[#F57C00] animate-pulse"
-                  : "bg-[#FFEBEE] text-[#C62828]"
-            }`}
-          >
-            {saveStatus === "auto-saved" && <CheckCircle2 size={14} strokeWidth={2.5} />}
-            {saveStatus === "saving" && <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
-            {saveStatus === "unsaved" && <AlertCircle size={14} strokeWidth={2.5} />}
-            <span className="text-[11px] font-medium whitespace-nowrap">
-              {saveStatus === "auto-saved" && `Saved ${getTimeDisplay()}`}
-              {saveStatus === "saving" && "Saving..."}
-              {saveStatus === "unsaved" && "Unsaved changes"}
-            </span>
-          </div>
-
-          <button
-            onClick={manualSave}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E3A3A] text-white hover:bg-[#2A4A4A] transition-colors"
-            title="Save (Ctrl/Cmd + S)"
-          >
-            <Save size={13} strokeWidth={2.5} />
-            <span className="text-[11px] font-semibold">Save</span>
+      <TopBar
+        left={
+          <button onClick={onBack} className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#1E3A3A] transition-colors flex items-center gap-2">
+            <span className="opacity-60">←</span>
+            <span>Memoire</span>
           </button>
-
-          <button className="p-1.5 rounded-lg hover:bg-[#E5E2DC] transition-colors">
-            <SlidersHorizontal size={16} className="text-[#5A5854]" />
-          </button>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4A3728] to-[#2D1F17] flex items-center justify-center text-white text-[11px] font-bold shadow-sm">
-            JT
+        }
+        center={
+          <div className="flex items-center gap-2.5 bg-white/70 border border-[#D0CCC6] rounded-xl px-4 py-2 w-60 hover:border-[#C8C3BA] transition-all">
+            <Search size={13} className="text-[#9A9690]" strokeWidth={2} />
+            <input placeholder="Search archive..." className="bg-transparent text-[12px] text-[#1A1A1A] placeholder-[#C8C3BA] outline-none w-full" />
           </div>
-        </div>
-      </div>
+        }
+        right={
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
+                saveStatus === "auto-saved"
+                  ? "bg-[#E8F5E9] text-[#2E7D32]"
+                  : saveStatus === "saving"
+                    ? "bg-[#FFF3E0] text-[#F57C00] animate-pulse"
+                    : "bg-[#FFEBEE] text-[#C62828]"
+              }`}
+            >
+              {saveStatus === "auto-saved" && <CheckCircle2 size={14} strokeWidth={2.5} />}
+              {saveStatus === "saving" && <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+              {saveStatus === "unsaved" && <AlertCircle size={14} strokeWidth={2.5} />}
+              <span className="text-[11px] font-medium whitespace-nowrap">
+                {saveStatus === "auto-saved" && `Saved ${getTimeDisplay()}`}
+                {saveStatus === "saving" && "Saving..."}
+                {saveStatus === "unsaved" && "Unsaved changes"}
+              </span>
+            </div>
+
+            <button
+              onClick={manualSave}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E3A3A] text-white hover:bg-[#2A4A4A] transition-colors"
+              title="Save (Ctrl/Cmd + S)"
+            >
+              <Save size={13} strokeWidth={2.5} />
+              <span className="text-[11px] font-semibold">Save</span>
+            </button>
+
+            <button className="p-1.5 rounded-lg hover:bg-[#E5E2DC] transition-colors">
+              <SlidersHorizontal size={16} className="text-[#5A5854]" />
+            </button>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4A3728] to-[#2D1F17] flex items-center justify-center text-white text-[11px] font-bold shadow-sm">
+              JT
+            </div>
+          </div>
+        }
+      />
 
       <div className="flex items-center justify-between px-6 py-2.5 border-b border-[#D9D6CF] shrink-0 bg-gradient-to-r from-white/50 to-white/30 backdrop-blur-xs">
         <div className="flex items-center gap-2">
